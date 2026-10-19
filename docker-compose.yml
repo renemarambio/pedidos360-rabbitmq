@@ -1,13 +1,101 @@
-version: '3.8'
+# Pedidos360 - RabbitMQ en clúster de 2 nodos + microservicios.
+#
+# Uso:  cp .env.example .env   (y editar las claves)
+#       docker compose up -d --build
+#
+# Puertos publicados:
+#   15672 Management UI nodo 1   |  15673 Management UI nodo 2
+#    5672 AMQP nodo 1            |   5673 AMQP nodo 2
+#    8080 pedidos-service        |   8081 rabbit-admin-service (Swagger en /swagger-ui.html)
+
+x-rabbit-comun: &rabbit-comun
+  image: rabbitmq:3.13-management
+  restart: unless-stopped
+  environment:
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-labuser}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-labpass}
+    # La misma cookie Erlang en ambos nodos es requisito para formar el clúster.
+    RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -setcookie ${RABBITMQ_ERLANG_COOKIE:-PEDIDOS360_CLUSTER_COOKIE}
+    RABBITMQ_CTL_ERL_ARGS: -setcookie ${RABBITMQ_ERLANG_COOKIE:-PEDIDOS360_CLUSTER_COOKIE}
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+    interval: 10s
+    timeout: 10s
+    retries: 12
+    start_period: 20s
 
 services:
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: pedidos360-rabbitmq
+  rabbit1:
+    <<: *rabbit-comun
+    hostname: rabbit1
+    container_name: pedidos360-rabbit1
     ports:
       - "5672:5672"
       - "15672:15672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbit1-data:/var/lib/rabbitmq
+
+  rabbit2:
+    <<: *rabbit-comun
+    hostname: rabbit2
+    container_name: pedidos360-rabbit2
+    depends_on:
+      rabbit1:
+        condition: service_healthy
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbit2-data:/var/lib/rabbitmq
+
+  # Tarea de una sola ejecución: asegura el clúster y aplica la política de retención.
+  rabbit-init:
+    image: rabbitmq:3.13-management
+    container_name: pedidos360-rabbit-init
+    depends_on:
+      rabbit2:
+        condition: service_healthy
     environment:
-      RABBITMQ_DEFAULT_USER: labuser
-      RABBITMQ_DEFAULT_PASS: labpass
+      RABBITMQ_CTL_ERL_ARGS: -setcookie ${RABBITMQ_ERLANG_COOKIE:-PEDIDOS360_CLUSTER_COOKIE}
+    volumes:
+      - ./rabbitmq/inicializar-cluster.sh:/inicializar-cluster.sh:ro
+    entrypoint: ["sh", "/inicializar-cluster.sh"]
+    restart: "no"
+
+  pedidos-service:
+    build: ./pedidos-service
+    container_name: pedidos360-pedidos
     restart: unless-stopped
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+    environment:
+      RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-labuser}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-labpass}
+      AUDITORIA_DLQ_HABILITADA: ${AUDITORIA_DLQ_HABILITADA:-true}
+      JAVA_TOOL_OPTIONS: -Xmx256m
+    ports:
+      - "8080:8080"
+
+  rabbit-admin-service:
+    build: ./rabbit-admin-service
+    container_name: pedidos360-rabbit-admin
+    restart: unless-stopped
+    depends_on:
+      rabbit-init:
+        condition: service_completed_successfully
+    environment:
+      RABBITMQ_ADDRESSES: rabbit1:5672,rabbit2:5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-labuser}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-labpass}
+      RABBITMQ_MANAGEMENT_URL: http://rabbit1:15672
+      JAVA_TOOL_OPTIONS: -Xmx256m
+    ports:
+      - "8081:8081"
+
+volumes:
+  rabbit1-data:
+  rabbit2-data:

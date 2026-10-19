@@ -1,4 +1,23 @@
+# Compilación
 target/
+*.class
+*.jar
+
+# Maven Wrapper (Maven descargado localmente)
+.mvn/wrapper/dists/
+
+# IDEs
 .idea/
 *.iml
-.mvn/wrapper/dists/
+.vscode/
+.settings/
+.project
+.classpath
+
+# Secretos y entorno local
+.env
+
+# Sistema operativo y logs
+.DS_Store
+Thumbs.db
+*.log
