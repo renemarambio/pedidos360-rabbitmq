@@ -1,0 +1,77 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: pedidos-service
+  rabbitmq:
+    # Ambos nodos del clúster: si uno cae, la conexión se establece con el otro.
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673}
+    username: ${RABBITMQ_USER:labuser}
+    password: ${RABBITMQ_PASSWORD:labpass}
+    # Confirmaciones del broker al publicar y devolución de mensajes no enrutables
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+
+# =====================================================================
+# Topología de mensajería centralizada.
+# TODOS los nombres de exchanges, colas y routing keys salen de aquí.
+# Se leen con la clase config/MensajeriaProperties; no hay nombres
+# escritos directamente en el código de negocio.
+# =====================================================================
+pedidos360:
+  rabbit:
+    exchanges:
+      direct: pedidos360.direct.exchange       # Distribuye el pedido a cada dominio
+      topic: pedidos360.topic.exchange         # Eventos de monitoreo por patrón
+      dead-letter: pedidos360.dlx              # Recibe los mensajes rechazados
+
+    reintentos:
+      max-intentos: 2                          # Reintentos antes de enviar a la DLQ
+      ttl-ms: 5000                             # Espera en la cola de reintento
+      header-intentos: x-lab-intentos          # Header que cuenta los reintentos
+
+    retencion-dlq:
+      ttl-ms: 86400000                         # Un mensaje muerto se conserva 24 h
+      max-length: 1000                         # Máximo de mensajes por DLQ (se descartan los más antiguos)
+
+    notificaciones:
+      nombre: notificaciones
+      queue: pedidos360.notificaciones.queue
+      retry-queue: pedidos360.notificaciones.retry
+      dlq: pedidos360.notificaciones.dlq
+      routing-key: notificaciones
+      retry-routing-key: notificaciones.retry
+      dead-letter-routing-key: notificaciones.failed
+
+    cocina:
+      nombre: cocina
+      queue: pedidos360.cocina.queue
+      retry-queue: pedidos360.cocina.retry
+      dlq: pedidos360.cocina.dlq
+      routing-key: cocina
+      retry-routing-key: cocina.retry
+      dead-letter-routing-key: cocina.failed
+
+    documentos:
+      nombre: documentos
+      queue: pedidos360.documentos.queue
+      retry-queue: pedidos360.documentos.retry
+      dlq: pedidos360.documentos.dlq
+      routing-key: documentos
+      retry-routing-key: documentos.retry
+      dead-letter-routing-key: documentos.failed
+
+    monitoreo:
+      queue: pedidos360.monitoreo.queue
+      binding-pattern: "pedidos.#"
+      routing-key-por-defecto: pedidos.evento.nuevo
+
+    auditoria-dlq:
+      # true: un consumidor lee las DLQ y registra cada mensaje fallido en el log.
+      # false: los mensajes quedan acumulados en las DLQ (útil para mostrarlos en la consola de RabbitMQ).
+      habilitada: ${AUDITORIA_DLQ_HABILITADA:true}
