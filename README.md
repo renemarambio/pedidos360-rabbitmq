@@ -10,18 +10,22 @@ Pedidos360 recibe pedidos por REST y los distribuye de forma asíncrona a tres d
 
 ```mermaid
 flowchart LR
-    W[Catálogo web / curl] -->|POST /api/pedidos| P[pedidos-service :8080]
-    P -->|productor| DX{{pedidos360.direct.exchange<br/>direct}}
-    DX -->|notificaciones| QN[notificaciones.queue]
-    DX -->|cocina| QC[cocina.queue]
-    DX -->|documentos| QD[documentos.queue]
-    QN & QC & QD -->|@RabbitListener + ACK| P
-    P -. error recuperable .->|*.retry| R[colas retry<br/>TTL 5 s]
-    R -. vuelve a la cola .-> DX
-    QN & QC & QD -. NACK .-> DLX{{pedidos360.dlx}}
-    DLX --> DLQ[3 DLQ] -->|log del fallo| P
-    P -->|pedidos.*| TX{{pedidos360.topic.exchange<br/>topic}} -->|pedidos.#| QM[monitoreo.queue]
-    A[rabbit-admin-service :8081] -->|AMQP + API Management| RB[(Clúster RabbitMQ<br/>rabbit1 + rabbit2)]
+    W["Catálogo web / curl"] -->|"POST /api/pedidos"| P["pedidos-service :8080"]
+    P -->|"productor"| DX{{"pedidos360.direct.exchange (direct)"}}
+    DX -->|"notificaciones"| QN["notificaciones.queue"]
+    DX -->|"cocina"| QC["cocina.queue"]
+    DX -->|"documentos"| QD["documentos.queue"]
+    QN -->|"RabbitListener + ACK"| P
+    QC -->|"RabbitListener + ACK"| P
+    QD -->|"RabbitListener + ACK"| P
+    P -.->|"error recuperable"| R["colas retry (TTL 5 s)"]
+    R -.->|"vuelve a la cola"| DX
+    QC -.->|"NACK"| DLX{{"pedidos360.dlx"}}
+    DLX --> DLQ["3 DLQ"]
+    DLQ -->|"log del fallo"| P
+    P -->|"pedidos.*"| TX{{"pedidos360.topic.exchange (topic)"}}
+    TX -->|"pedidos.#"| QM["monitoreo.queue"]
+    A["rabbit-admin-service :8081"] -->|"AMQP + API Management"| RB[("Clúster RabbitMQ rabbit1 + rabbit2")]
 ```
 
 | Componente | Descripción |
