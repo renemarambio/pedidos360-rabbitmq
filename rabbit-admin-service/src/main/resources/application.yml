@@ -1,0 +1,25 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: rabbit-admin-service
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673}
+    username: ${RABBITMQ_USER:labuser}
+    password: ${RABBITMQ_PASSWORD:labpass}
+
+rabbit-admin:
+  # API HTTP de RabbitMQ Management (listado de colas, métricas, bindings y políticas)
+  management:
+    url: ${RABBITMQ_MANAGEMENT_URL:http://localhost:15672}
+    usuario: ${RABBITMQ_USER:labuser}
+    password: ${RABBITMQ_PASSWORD:labpass}
+    vhost: /
+  # Recursos que la API no permite eliminar (reservados por RabbitMQ)
+  prefijos-protegidos:
+    - "amq."
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
