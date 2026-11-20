@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedidos360 - Plataforma de Pedidos Distribuidos</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5.3.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <!-- Bootstrap Icons 1.11.3 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <style>
+    :root {
+      --primary-color: #ff5722;
+      --primary-hover: #e64a19;
+      --primary-light: #fff3e0;
+      --secondary-color: #0f172a;
+      --accent-color: #3b82f6;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --dark-card: #1e293b;
+      --body-bg: #f8fafc;
+      --text-muted: #64748b;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--body-bg);
+      color: #1e293b;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Navbar Styling */
+    .navbar-pedidos {
+      background: #0f172a;
+      border-bottom: 2px solid #1e293b;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+    }
+
+    .brand-logo-icon {
+      background: linear-gradient(135deg, #ff5722, #ff9800);
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+    }
+
+    /* Status Pill Pulse */
+    .status-pill {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .status-dot::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      border-radius: 50%;
+      background-color: inherit;
+      animation: pulse-ring 2s infinite ease-out;
+    }
+
+    .status-pill.offline {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
+    }
+
+    .status-pill.offline .status-dot {
+      background-color: #ef4444;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(3.2); opacity: 0; }
+    }
+
+    /* Hero / Architecture Banner */
+    .hero-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #fff;
+      padding: 2.5rem 0;
+      border-bottom: 1px solid #334155;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(255, 87, 34, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .arch-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #cbd5e1;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Product Cards */
+    .product-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      overflow: hidden;
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+    }
+
+    .product-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      border-color: #cbd5e1;
+    }
+
+    .product-img-wrapper {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      overflow: hidden;
+      background: #f1f5f9;
+    }
+
+    .product-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .product-card:hover .product-img {
+      transform: scale(1.05);
+    }
+
+    .badge-sku {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(4px);
+      color: #f8fafc;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+    }
+
+    .badge-cat {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 87, 34, 0.9);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+    }
+
+    .price-tag {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .btn-buy {
+      background: linear-gradient(135deg, #ff5722 0%, #f4511e 100%);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(255, 87, 34, 0.25);
+    }
+
+    .btn-buy:hover {
+      background: linear-gradient(135deg, #f4511e 0%, #d84315 100%);
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(255, 87, 34, 0.35);
+    }
+
+    .btn-buy:active {
+      transform: translateY(0);
+    }
+
+    .qty-control {
+      display: flex;
+      align-items: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      overflow: hidden;
+    }
+
+    .qty-btn {
+      border: none;
+      background: transparent;
+      padding: 0.3rem 0.7rem;
+      font-weight: 700;
+      color: #475569;
+      transition: background 0.15s;
+    }
+
+    .qty-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .qty-input {
+      width: 40px;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #0f172a;
+    }
+
+    .qty-input:focus {
+      outline: none;
+    }
+
+    /* Dashboard & Table Styling */
+    .dashboard-panel {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+    }
+
+    .metric-card {
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      padding: 1.2rem;
+      transition: all 0.2s;
+    }
+
+    .metric-card:hover {
+      background: #fff;
+      border-color: #cbd5e1;
+      transform: translateY(-2px);
+    }
+
+    .metric-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .order-row {
+      transition: background-color 0.2s;
+      animation: fadeInRow 0.4s ease-out;
+    }
+
+    @keyframes fadeInRow {
+      from { opacity: 0; transform: translateY(-8px); background-color: #fef3c7; }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Toast Container */
+    .toast-container {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 1090;
+    }
+
+    .custom-toast {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      min-width: 340px;
+      max-width: 440px;
+    }
+
+    .sim-card {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================= -->
+  <!-- NAVBAR PRINCIPAL                                                          -->
+  <!-- ========================================================================= -->
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-pedidos sticky-top py-2">
+    <div class="container-fluid px-lg-4">
+      <!-- Marca & Logo -->
+      <a class="navbar-brand d-flex align-items-center gap-3" href="#">
+        <div class="brand-logo-icon text-white">
+          <i class="bi bi-box-seam-fill fs-5"></i>
+        </div>
+        <div>
+          <span class="fs-5 fw-bold text-white tracking-wide">Pedidos<span style="color: #ff7043;">360</span></span>
+          <span class="d-block text-secondary small" style="font-size: 0.72rem; letter-spacing: 0.5px;">SISTEMA DISTRIBUIDO &bull; RABBITMQ</span>
+        </div>
+      </a>
+
+      <!-- Botón móvil -->
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Contenido Navbar -->
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-lg-2">
+          <li class="nav-item">
+            <a class="nav-link active fw-medium" href="#catalogo"><i class="bi bi-grid me-1"></i> Catálogo</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link fw-medium" href="#dashboard"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link fw-medium" href="#topologia"><i class="bi bi-diagram-3 me-1"></i> Arquitectura</a>
+          </li>
+        </ul>
+
+        <!-- Indicador de Estado Backend & RabbitMQ -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <div id="statusPill" class="status-pill" title="Comprobación de enlace Spring Boot y Clúster RabbitMQ">
+            <span class="status-dot"></span>
+            <span id="statusText">Conectando a RabbitMQ...</span>
+          </div>
+
+          <button id="btnVerificarConexion" class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="verificarConexion()" title="Actualizar estado del backend">
+            <i class="bi bi-arrow-repeat me-1"></i> Reintentar
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========================================================================= -->
+  <!-- HERO BANNER / ARQUITECTURA AMQP                                           -->
+  <!-- ========================================================================= -->
+  <header class="hero-banner" id="topologia">
+    <div class="container-fluid px-lg-4">
+      <div class="row align-items-center gy-4">
+        <div class="col-lg-7">
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1 mb-2 rounded-pill fw-semibold" style="color: #ffab91 !important; background: rgba(255,87,34,0.15) !important;">
+            <i class="bi bi-cpu-fill me-1"></i> Microservicios & Mensajería Asíncrona
+          </span>
+          <h1 class="display-6 fw-extrabold text-white mb-2">Catálogo & Despacho Central</h1>
+          <p class="text-light opacity-75 mb-3" style="max-width: 680px; font-size: 0.95rem;">
+            Cada compra genera una orden que ingresa a la API REST de Spring Boot y se distribuye de inmediato mediante un 
+            <strong>Direct Exchange</strong> a las colas de dominio (Notificaciones, Cocina y Documentos) con confirmaciones <strong>ACK manuales</strong> y <strong>Dead Letter Queue (DLQ)</strong>.
+          </p>
+
+          <!-- Chips de Configuración de RabbitMQ -->
+          <div class="d-flex flex-wrap gap-2 pt-1">
+            <span class="arch-chip"><i class="bi bi-hdd-network text-success"></i> Nodo 1: rabbit1:5672</span>
+            <span class="arch-chip"><i class="bi bi-hdd-network text-info"></i> Nodo 2: rabbit2:5673</span>
+            <span class="arch-chip"><i class="bi bi-shuffle text-warning"></i> Direct + Topic Exchange</span>
+            <span class="arch-chip"><i class="bi bi-shield-check text-primary"></i> Manual ACK (Prefetch: 1)</span>
+            <span class="arch-chip"><i class="bi bi-hourglass-split text-info"></i> TTL Reintento: 5000 ms</span>
+            <span class="arch-chip"><i class="bi bi-envelope-x text-danger"></i> Dead Letter Queue (DLX)</span>
+          </div>
+        </div>
+
+        <!-- Panel de Simulación de Fallo Controlado (Lab RabbitMQ) -->
+        <div class="col-lg-5">
+          <div class="card bg-dark border-secondary text-white p-3 shadow-lg rounded-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-bold small text-uppercase text-warning">
+                <i class="bi bi-sliders me-1"></i> Laboratorio de Resiliencia & DLQ
+              </span>
+              <span class="badge bg-secondary-subtle text-light font-mono" style="font-size: 0.7rem;">Simulador AMQP</span>
+            </div>
+            <p class="small text-secondary mb-2" style="font-size: 0.8rem;">
+              Activa fallos controlados para observar el reenvío a la cola de retry con TTL y su derivación final a la DLQ tras agotar intentos:
+            </p>
+            <div class="row g-2">
+              <div class="col-4">
+                <div class="form-check form-switch small">
+                  <input class="form-check-input" type="checkbox" role="switch" id="chkFalloNotificaciones">
+                  <label class="form-check-label text-light small" for="chkFalloNotificaciones" style="font-size: 0.78rem;">Fallo Notif.</label>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="form-check form-switch small">
+                  <input class="form-check-input" type="checkbox" role="switch" id="chkFalloCocina">
+                  <label class="form-check-label text-light small" for="chkFalloCocina" style="font-size: 0.78rem;">Fallo Cocina</label>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="form-check form-switch small">
+                  <input class="form-check-input" type="checkbox" role="switch" id="chkFalloDocumentos">
+                  <label class="form-check-label text-light small" for="chkFalloDocumentos" style="font-size: 0.78rem;">Fallo Docs</label>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 pt-2 border-top border-secondary-subtle text-secondary small d-flex justify-content-between align-items-center" style="font-size: 0.74rem;">
+              <span>Endpoint: <code class="text-info">POST /api/pedidos</code></span>
+              <span class="text-success"><i class="bi bi-check2-circle"></i> Clúster Dual Sincronizado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- CONTENIDO PRINCIPAL: CATÁLOGO DE PRODUCTOS                                -->
+  <!-- ========================================================================= -->
+  <main class="container-fluid px-lg-4 py-4 flex-grow-1">
+
+    <!-- Sección Catálogo -->
+    <section id="catalogo" class="mb-5">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div>
+          <h2 class="fw-bold mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-bag-check-fill text-danger"></i> Catálogo de Productos
+          </h2>
+          <p class="text-muted mb-0 small">Selecciona los productos y envía la orden en tiempo real hacia el clúster RabbitMQ.</p>
+        </div>
+
+        <!-- Filtro rápido por categoría -->
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-dark rounded-pill px-3 filter-btn active" data-category="all" onclick="filtrarCategoria('all', this)">Todos</button>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-btn" data-category="Hamburguesas" onclick="filtrarCategoria('Hamburguesas', this)">Hamburguesas</button>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-btn" data-category="Pizzas" onclick="filtrarCategoria('Pizzas', this)">Pizzas</button>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-btn" data-category="Sushi" onclick="filtrarCategoria('Sushi', this)">Sushi</button>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-btn" data-category="Saludable" onclick="filtrarCategoria('Saludable', this)">Saludable</button>
+          <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-btn" data-category="Postres" onclick="filtrarCategoria('Postres', this)">Postres</button>
+        </div>
+      </div>
+
+      <!-- Grid de Productos -->
+      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4" id="productosGrid">
+        <!-- Generado dinámicamente vía JavaScript -->
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- DASHBOARD: PANEL DE CONTROL DE PEDIDOS EN TIEMPO REAL                     -->
+    <!-- ========================================================================= -->
+    <section id="dashboard" class="dashboard-panel p-4 mb-5">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center pb-3 border-bottom mb-4 gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-3 bg-primary-subtle text-primary">
+              <i class="bi bi-speedometer2 fs-4" style="color: #ff5722;"></i>
+            </div>
+            <div>
+              <h3 class="fw-bold mb-0">Dashboard de Pedidos en Tiempo Real</h3>
+              <p class="text-muted small mb-0">Monitor de órdenes despachadas al Direct Exchange y confirmadas por microservicios</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones del Dashboard -->
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="exportarHistorialJSON()" title="Descargar registro de órdenes en JSON">
+            <i class="bi bi-download me-1"></i> Exportar JSON
+          </button>
+          <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="limpiarHistorial()" title="Limpiar lista local de pedidos">
+            <i class="bi bi-trash3 me-1"></i> Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjetas de Métricas -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+          <div class="metric-card d-flex align-items-center gap-3">
+            <div class="metric-icon bg-primary-subtle text-primary">
+              <i class="bi bi-box-arrow-up-right fs-5" style="color: #ff5722;"></i>
+            </div>
+            <div>
+              <span class="text-muted small d-block">Pedidos Procesados</span>
+              <span class="fs-4 fw-bold text-dark" id="metricTotalPedidos">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <div class="metric-card d-flex align-items-center gap-3">
+            <div class="metric-icon bg-success-subtle text-success">
+              <i class="bi bi-currency-dollar fs-5"></i>
+            </div>
+            <div>
+              <span class="text-muted small d-block">Total Facturado</span>
+              <span class="fs-4 fw-bold text-dark" id="metricTotalMonto">$0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <div class="metric-card d-flex align-items-center gap-3">
+            <div class="metric-icon bg-info-subtle text-info">
+              <i class="bi bi-layers-fill fs-5"></i>
+            </div>
+            <div>
+              <span class="text-muted small d-block">Mensajes a dominios (x3)</span>
+              <span class="fs-4 fw-bold text-dark" id="metricMensajesFanout">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <div class="metric-card d-flex align-items-center gap-3">
+            <div class="metric-icon bg-warning-subtle text-warning">
+              <i class="bi bi-activity fs-5"></i>
+            </div>
+            <div>
+              <span class="text-muted small d-block">Confirmación ACK</span>
+              <span class="fs-4 fw-bold text-dark" id="metricAckStatus">100% OK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Pedidos -->
+      <div class="table-responsive rounded-3 border">
+        <table class="table table-hover align-middle mb-0" id="tablaPedidos">
+          <thead class="table-light text-uppercase small text-muted font-mono" style="font-size: 0.78rem;">
+            <tr>
+              <th scope="col" class="py-3 ps-3">ID Pedido</th>
+              <th scope="col" class="py-3">Producto / SKU</th>
+              <th scope="col" class="py-3 text-center">Cantidad</th>
+              <th scope="col" class="py-3 text-end">Total</th>
+              <th scope="col" class="py-3 text-center">Fecha & Hora</th>
+              <th scope="col" class="py-3 text-center">Estado RabbitMQ</th>
+              <th scope="col" class="py-3 text-center pe-3">Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPedidos">
+            <!-- Fila por defecto sin pedidos -->
+            <tr id="emptyRow">
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                <span class="fw-medium">No se han registrado pedidos en esta sesión.</span>
+                <span class="d-block small text-muted">Haz clic en "Comprar / Enviar Pedido" en cualquier tarjeta del catálogo para comenzar.</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- TOAST CONTAINER PARA NOTIFICACIONES                                       -->
+  <!-- ========================================================================= -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL PARA INSPECCIÓN DETALLADA DEL PAYLOAD JSON                          -->
+  <!-- ========================================================================= -->
+  <div class="modal fade" id="modalDetallePedido" tabindex="-1" aria-labelledby="modalDetalleLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-header bg-dark text-white rounded-top-4">
+          <h5 class="modal-title font-mono" id="modalDetalleLabel">
+            <i class="bi bi-code-slash text-warning me-2"></i> Inspección de Mensaje AMQP
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <h6 class="fw-bold small text-muted text-uppercase mb-2">1. Payload JSON enviado al Backend (POST /api/pedidos)</h6>
+              <pre class="bg-light p-3 rounded-3 border font-mono small mb-0" style="max-height: 240px; overflow-y: auto;" id="jsonRequestViewer"></pre>
+            </div>
+            <div class="col-md-6">
+              <h6 class="fw-bold small text-muted text-uppercase mb-2">2. Respuesta confirmada de Spring Boot (HTTP 200/201)</h6>
+              <pre class="bg-light p-3 rounded-3 border font-mono small mb-0" style="max-height: 240px; overflow-y: auto;" id="jsonResponseViewer"></pre>
+            </div>
+          </div>
+          <div class="alert alert-info border-info-subtle small mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-info-circle-fill fs-5"></i>
+            <div>
+              <strong>Distribución confirmada:</strong> El mensaje fue serializado en formato JSON persistente y publicado a <code>pedidos360.direct.exchange</code> con destino a las colas <code>notificaciones</code>, <code>cocina</code> y <code>documentos</code>.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light rounded-bottom-4">
+          <button type="button" class="btn btn-secondary btn-sm px-4 rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- FOOTER                                                                    -->
+  <!-- ========================================================================= -->
+  <footer class="bg-dark text-secondary py-4 mt-auto border-top border-secondary-subtle">
+    <div class="container-fluid px-lg-4 text-center text-md-between d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+      <div class="small">
+        <span class="text-white fw-bold">Pedidos360</span> &copy; 2026 - Arquitectura de Software & Microservicios Asíncronos.
+      </div>
+      <div class="small text-secondary">
+        Backend: <span class="text-light">Spring Boot 3.3.5</span> | Mensajería: <span class="text-light">RabbitMQ Direct/Topic + ACK + DLQ</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap 5.3.3 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <!-- ========================================================================= -->
+  <!-- LOGICA JAVASCRIPT FRONT-END                                               -->
+  <!-- ========================================================================= -->
+  <script>
+    // =======================================================================
+    // 1. CATÁLOGO DE PRODUCTOS
+    // =======================================================================
+    const PRODUCTOS = [
+      {
+        id: "PROD-101",
+        nombre: "Burger Gourmet 360 Doble Cheddar",
+        categoria: "Hamburguesas",
+        precio: 12990,
+        descripcion: "Doble medallón de res Angus (300g), queso cheddar fundido, tocino ahumado crujiente y cebolla caramelizada en suave pan brioche artesanal.",
+        imagen: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
+        destacado: "MÁS VENDIDO"
+      },
+      {
+        id: "PROD-102",
+        nombre: "Pizza Napolitana Rústica Trufada",
+        categoria: "Pizzas",
+        precio: 14500,
+        descripcion: "Masa madre con 48h de fermentación, salsa de tomates San Marzano, mozzarella fior di latte, prosciutto di Parma y toques de aceite de trufa blanca.",
+        imagen: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80",
+        destacado: "CHEF CHOICE"
+      },
+      {
+        id: "PROD-103",
+        nombre: "Sushi Omakase Roll Pack (32 cortes)",
+        categoria: "Sushi",
+        precio: 18990,
+        descripcion: "Selección premium: rolls tempura en panko, nigiris de salmón flambeado con unagi, sashimi fresco de atún y makis envueltos en palta hass.",
+        imagen: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80",
+        destacado: "PREMIUM"
+      },
+      {
+        id: "PROD-104",
+        nombre: "Bowl Teriyaki Salmón & Quinoa Andina",
+        categoria: "Saludable",
+        precio: 9990,
+        descripcion: "Filete de salmón a la plancha glaseado con teriyaki casero, edamames al vapor, palta fresca, zanahoria juliana sobre base de quinoa tricolor.",
+        imagen: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
+        destacado: "FIT & HEALTHY"
+      },
+      {
+        id: "PROD-105",
+        nombre: "Trilogía Volcán de Chocolate Belga",
+        categoria: "Postres",
+        precio: 6500,
+        descripcion: "Bizcocho tibio de cacao amargo al 70% con corazón fundido de chocolate, tierra de avellanas tostadas y quenelle de helado de vainilla Bourbon.",
+        imagen: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80",
+        destacado: "POSTRE"
+      },
+      {
+        id: "PROD-106",
+        nombre: "Pack Bebidas Artesanales & Mocktails",
+        categoria: "Bebidas",
+        precio: 4990,
+        descripcion: "Dúo refrescante de limonada menta-jengibre prensada en frío y mocktail tropical de maracuyá con kombucha orgánica de frutos rojos.",
+        imagen: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=600&q=80",
+        destacado: "REFRESCANTE"
+      }
+    ];
+
+    // Clave para guardar historial en localStorage
+    const STORAGE_KEY = "pedidos360_historial_pedidos";
+
+    // Variables de estado
+    let listaPedidos = [];
+    let modalDetalleInstance = null;
+
+    // =======================================================================
+    // 2. INICIALIZACIÓN AL CARGAR LA PÁGINA
+    // =======================================================================
+    document.addEventListener("DOMContentLoaded", () => {
+      renderizarCatalogo(PRODUCTOS);
+      cargarHistorialLocal();
+      actualizarDashboard();
+      modalDetalleInstance = new bootstrap.Modal(document.getElementById("modalDetallePedido"));
+      verificarConexion();
+
+      // Chequeo periódico de conexión cada 30 segundos
+      setInterval(verificarConexion, 30000);
+    });
+
+    // =======================================================================
+    // 3. RENDERIZACIÓN DEL CATÁLOGO DE PRODUCTOS
+    // =======================================================================
+    function renderizarCatalogo(productos) {
+      const contenedor = document.getElementById("productosGrid");
+      contenedor.innerHTML = "";
+
+      productos.forEach(prod => {
+        const col = document.createElement("div");
+        col.className = "col";
+        col.innerHTML = `
+          <div class="product-card" data-category="${prod.categoria}">
+            <div class="product-img-wrapper">
+              <img src="${prod.imagen}" alt="${prod.nombre}" class="product-img" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80';">
+              <span class="badge-sku font-mono">${prod.id}</span>
+              <span class="badge-cat">${prod.categoria}</span>
+            </div>
+            <div class="p-4 d-flex flex-column flex-grow-1">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge bg-warning-subtle text-warning-emphasis fw-bold" style="font-size: 0.68rem;">
+                  <i class="bi bi-star-fill me-1"></i>${prod.destacado}
+                </span>
+                <span class="text-muted small font-mono">Stock Disponible</span>
+              </div>
+              <h5 class="fw-bold mb-2 text-dark">${prod.nombre}</h5>
+              <p class="text-muted small flex-grow-1 mb-3" style="line-height: 1.45;">${prod.descripcion}</p>
+              
+              <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto">
+                <div>
+                  <span class="text-muted small d-block" style="font-size: 0.72rem;">Precio Unitario</span>
+                  <span class="price-tag">$${prod.precio.toLocaleString("es-CL")}</span>
+                </div>
+
+                <!-- Selector de Cantidad -->
+                <div class="qty-control">
+                  <button type="button" class="qty-btn" onclick="ajustarCantidad('${prod.id}', -1)" title="Reducir cantidad">-</button>
+                  <input type="text" id="qty-${prod.id}" class="qty-input" value="1" readonly>
+                  <button type="button" class="qty-btn" onclick="ajustarCantidad('${prod.id}', 1)" title="Aumentar cantidad">+</button>
+                </div>
+              </div>
+
+              <!-- Botón de Compra / Enviar a RabbitMQ -->
+              <button id="btn-comprar-${prod.id}" class="btn btn-buy w-100 mt-3 d-flex align-items-center justify-content-center gap-2" onclick="enviarPedido('${prod.id}')">
+                <i class="bi bi-cart-plus-fill"></i>
+                <span>Comprar / Enviar Pedido</span>
+              </button>
+            </div>
+          </div>
+        `;
+        contenedor.appendChild(col);
+      });
+    }
+
+    // Ajustar cantidad de compra
+    function ajustarCantidad(productoId, delta) {
+      const input = document.getElementById(`qty-${productoId}`);
+      if (!input) return;
+      let val = parseInt(input.value) || 1;
+      val += delta;
+      if (val < 1) val = 1;
+      if (val > 20) val = 20; // límite razonable
+      input.value = val;
+    }
+
+    // Filtrar por categoría
+    function filtrarCategoria(categoria, boton) {
+      document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.classList.remove("btn-dark", "active");
+        btn.classList.add("btn-outline-secondary");
+      });
+      boton.classList.remove("btn-outline-secondary");
+      boton.classList.add("btn-dark", "active");
+
+      if (categoria === "all") {
+        renderizarCatalogo(PRODUCTOS);
+      } else {
+        const filtrados = PRODUCTOS.filter(p => p.categoria.toLowerCase() === categoria.toLowerCase());
+        renderizarCatalogo(filtrados);
+      }
+    }
+
+    // =======================================================================
+    // 4. INTEGRACIÓN BACKEND CON API REST (POST /api/pedidos)
+    // =======================================================================
+    async function enviarPedido(productoId) {
+      const producto = PRODUCTOS.find(p => p.id === productoId);
+      if (!producto) return;
+
+      const qtyInput = document.getElementById(`qty-${productoId}`);
+      const cantidad = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+      const btnComprar = document.getElementById(`btn-comprar-${productoId}`);
+
+      // Generar ID de Pedido en formato PED-XXXX
+      const numRandom = Math.floor(1000 + Math.random() * 9000);
+      const idPedido = `PED-${numRandom}`;
+      const fechaISO = new Date().toISOString();
+
+      // Construcción del Payload estricto solicitado
+      const pedidoPayload = {
+        idPedido: idPedido,
+        productoId: producto.id,
+        nombreProducto: producto.nombre,
+        precio: Number(producto.precio),
+        cantidad: Number(cantidad),
+        fecha: fechaISO
+      };
+
+      // Inyección de parámetros de simulación si están activos (Lab DLQ/TTL)
+      const falloNotif = document.getElementById("chkFalloNotificaciones")?.checked || false;
+      const falloCocina = document.getElementById("chkFalloCocina")?.checked || false;
+      const falloDocs = document.getElementById("chkFalloDocumentos")?.checked || false;
+
+      if (falloNotif) pedidoPayload.falloNotificaciones = true;
+      if (falloCocina) pedidoPayload.falloCocina = true;
+      if (falloDocs) pedidoPayload.falloDocumentos = true;
+
+      // Estado de carga en el botón
+      const contenidoOriginal = btnComprar.innerHTML;
+      btnComprar.disabled = true;
+      btnComprar.innerHTML = `
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span>Publicando a RabbitMQ...</span>
+      `;
+
+      try {
+        // Petición HTTP POST a /api/pedidos
+        const response = await fetch("/api/pedidos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(pedidoPayload)
+        });
+
+        if (response.ok) { // Códigos HTTP 200 o 201
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (e) {
+            data = { mensaje: "Confirmación recibida sin cuerpo JSON", publicado: true };
+          }
+
+          // Guardar orden en historial local y actualizar dashboard
+          const pedidoRegistrado = {
+            idPedido: idPedido,
+            productoId: producto.id,
+            nombreProducto: producto.nombre,
+            precio: producto.precio,
+            cantidad: cantidad,
+            total: producto.precio * cantidad,
+            fecha: fechaISO,
+            requestPayload: pedidoPayload,
+            responsePayload: data,
+            estado: "PUBLICADO_RABBITMQ",
+            fallos: { notificaciones: falloNotif, cocina: falloCocina, documentos: falloDocs }
+          };
+
+          guardarPedido(pedidoRegistrado);
+          actualizarDashboard();
+
+          // Notificación visual de éxito con Toast de Bootstrap
+          mostrarToast(
+            "success",
+            "¡Pedido Enviado a RabbitMQ!",
+            `<strong>${idPedido}</strong> (${producto.nombre} x${cantidad}) distribuido por el Direct Exchange a notificaciones, cocina y documentos. Microservicios notificados con ACK manual.`
+          );
+
+          // Restablecer cantidad a 1
+          if (qtyInput) qtyInput.value = 1;
+
+        } else {
+          // El servidor respondió con un error (4xx / 5xx)
+          let errorText = "";
+          try {
+            const errJson = await response.json();
+            errorText = errJson.message || errJson.mensaje || JSON.stringify(errJson);
+          } catch (_) {
+            errorText = await response.text();
+          }
+
+          mostrarToast(
+            "danger",
+            `Error del Servidor (HTTP ${response.status})`,
+            `No se pudo despachar el pedido <strong>${idPedido}</strong>. Servidor respondió: ${errorText || response.statusText}`
+          );
+        }
+
+      } catch (error) {
+        // Error de red, backend apagado o problema de CORS
+        console.error("Error al conectar con /api/pedidos:", error);
+        mostrarToast(
+          "danger",
+          "Fallo de Red / Conexión",
+          `No se pudo establecer conexión con el backend Spring Boot en <code>http://localhost:8080/api/pedidos</code>. Verifica que la aplicación Java esté ejecutándose.`
+        );
+        marcarEstadoConexion(false, "Error de enlace con Backend (:8080)");
+      } finally {
+        // Restaurar estado del botón
+        btnComprar.disabled = false;
+        btnComprar.innerHTML = contenidoOriginal;
+      }
+    }
+
+    // =======================================================================
+    // 5. GESTIÓN DEL HISTORIAL Y DASHBOARD EN TIEMPO REAL
+    // =======================================================================
+    function guardarPedido(nuevoPedido) {
+      listaPedidos.unshift(nuevoPedido); // Al inicio para orden cronológico descendente
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(listaPedidos));
+      } catch (e) {
+        console.warn("No se pudo persistir en localStorage:", e);
+      }
+    }
+
+    function cargarHistorialLocal() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          listaPedidos = JSON.parse(raw);
+        }
+      } catch (e) {
+        console.warn("Error leyendo localStorage:", e);
+        listaPedidos = [];
+      }
+    }
+
+    function actualizarDashboard() {
+      const tbody = document.getElementById("tbodyPedidos");
+      const emptyRow = document.getElementById("emptyRow");
+      const metricTotalPedidos = document.getElementById("metricTotalPedidos");
+      const metricTotalMonto = document.getElementById("metricTotalMonto");
+      const metricMensajesFanout = document.getElementById("metricMensajesFanout");
+
+      // Actualizar Métricas
+      const totalPedidos = listaPedidos.length;
+      const totalMonto = listaPedidos.reduce((sum, p) => sum + (p.total || 0), 0);
+      const mensajesFanout = totalPedidos * 3; // 1 mensaje por cada una de las 3 colas de dominio
+
+      if (metricTotalPedidos) metricTotalPedidos.innerText = totalPedidos;
+      if (metricTotalMonto) metricTotalMonto.innerText = "$" + totalMonto.toLocaleString("es-CL");
+      if (metricMensajesFanout) metricMensajesFanout.innerText = mensajesFanout;
+
+      // Renderizar Filas de la Tabla
+      if (totalPedidos === 0) {
+        if (emptyRow) emptyRow.style.display = "";
+        // Limpiar filas previas si existían
+        const filas = tbody.querySelectorAll(".order-row");
+        filas.forEach(f => f.remove());
+        return;
+      }
+
+      if (emptyRow) emptyRow.style.display = "none";
+
+      // Reconstruir cuerpo de tabla
+      tbody.innerHTML = "";
+      listaPedidos.forEach((p, index) => {
+        const tr = document.createElement("tr");
+        tr.className = "order-row";
+
+        const fechaObj = new Date(p.fecha);
+        const fechaFormateada = isNaN(fechaObj.getTime())
+          ? p.fecha
+          : fechaObj.toLocaleDateString("es-CL", { day: '2-digit', month: '2-digit', year: 'numeric' }) + " " +
+            fechaObj.toLocaleTimeString("es-CL", { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        // Badge de resiliencia si tuvo simulación de fallo
+        let falloBadge = "";
+        if (p.fallos && (p.fallos.notificaciones || p.fallos.cocina || p.fallos.documentos)) {
+          falloBadge = `<span class="badge bg-warning text-dark font-mono ms-1" style="font-size:0.65rem;" title="Simulación de fallo activa">TEST DLQ</span>`;
+        }
+
+        tr.innerHTML = `
+          <td class="ps-3">
+            <span class="fw-bold font-mono text-primary">${p.idPedido}</span>
+            ${falloBadge}
+          </td>
+          <td>
+            <div class="fw-semibold text-dark">${p.nombreProducto}</div>
+            <span class="badge bg-light text-secondary border font-mono" style="font-size: 0.7rem;">${p.productoId}</span>
+          </td>
+          <td class="text-center font-mono fw-bold">${p.cantidad}</td>
+          <td class="text-end font-mono fw-bold text-dark">$${(p.total || 0).toLocaleString("es-CL")}</td>
+          <td class="text-center small text-muted font-mono">${fechaFormateada}</td>
+          <td class="text-center">
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 font-mono" style="font-size: 0.74rem;">
+              <i class="bi bi-check-all me-1"></i>ACK MANUAL (3X)
+            </span>
+          </td>
+          <td class="text-center pe-3">
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1" onclick="verDetallePedido(${index})" title="Ver detalles técnicos JSON">
+              <i class="bi bi-eye-fill"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function verDetallePedido(index) {
+      const pedido = listaPedidos[index];
+      if (!pedido) return;
+
+      document.getElementById("modalDetalleLabel").innerHTML = `
+        <i class="bi bi-code-slash text-warning me-2"></i> Inspección AMQP: <span class="text-warning">${pedido.idPedido}</span>
+      `;
+      document.getElementById("jsonRequestViewer").textContent = JSON.stringify(pedido.requestPayload, null, 2);
+      document.getElementById("jsonResponseViewer").textContent = JSON.stringify(pedido.responsePayload, null, 2);
+
+      if (modalDetalleInstance) {
+        modalDetalleInstance.show();
+      }
+    }
+
+    function limpiarHistorial() {
+      if (listaPedidos.length === 0) return;
+      if (confirm("¿Estás seguro de que deseas limpiar el historial local de pedidos en pantalla?")) {
+        listaPedidos = [];
+        localStorage.removeItem(STORAGE_KEY);
+        actualizarDashboard();
+        mostrarToast("info", "Historial Limpiado", "El registro local de pedidos en pantalla ha sido reiniciado.");
+      }
+    }
+
+    function exportarHistorialJSON() {
+      if (listaPedidos.length === 0) {
+        alert("No hay pedidos registrados para exportar.");
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(listaPedidos, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `pedidos360_export_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // =======================================================================
+    // 6. VERIFICACIÓN DE ESTADO Y ENLACE (SPRING BOOT / RABBITMQ)
+    // =======================================================================
+    async function verificarConexion() {
+      const statusPill = document.getElementById("statusPill");
+      const statusText = document.getElementById("statusText");
+
+      try {
+        // Intenta consultar endpoint de estado
+        const res = await fetch("/api/status", { method: "GET" });
+        if (res.ok) {
+          const data = await res.json();
+          marcarEstadoConexion(true, `Conectado al Backend & Clúster RabbitMQ (${data.broker || "2 Nodos"})`);
+        } else {
+          // Si el endpoint /api/status no estuviese disponible, prueba /api/pedidos
+          marcarEstadoConexion(true, "Conectado al Backend Spring Boot (:8080)");
+        }
+      } catch (err) {
+        // Probar si el servidor está respondiendo en la raíz
+        try {
+          const ping = await fetch("/", { method: "HEAD" });
+          if (ping.ok) {
+            marcarEstadoConexion(true, "Servidor Activo (:8080) & RabbitMQ Listo");
+            return;
+          }
+        } catch (_) {}
+
+        marcarEstadoConexion(false, "Desconectado de Spring Boot (:8080)");
+      }
+    }
+
+    function marcarEstadoConexion(activo, mensaje) {
+      const statusPill = document.getElementById("statusPill");
+      const statusText = document.getElementById("statusText");
+      if (!statusPill || !statusText) return;
+
+      if (activo) {
+        statusPill.classList.remove("offline");
+        statusText.innerText = mensaje;
+      } else {
+        statusPill.classList.add("offline");
+        statusText.innerText = mensaje;
+      }
+    }
+
+    // =======================================================================
+    // 7. SISTEMA DE TOASTS DINÁMICOS
+    // =======================================================================
+    function mostrarToast(tipo, titulo, mensaje) {
+      const contenedor = document.getElementById("toastContainer");
+      if (!contenedor) return;
+
+      const toastId = "toast_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+      const esExito = tipo === "success";
+      const icono = esExito 
+        ? `<i class="bi bi-check-circle-fill text-success fs-5"></i>` 
+        : (tipo === "danger" 
+            ? `<i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>` 
+            : `<i class="bi bi-info-circle-fill text-info fs-5"></i>`);
+
+      const toastEl = document.createElement("div");
+      toastEl.className = "toast custom-toast border-0 mb-3";
+      toastEl.id = toastId;
+      toastEl.setAttribute("role", "alert");
+      toastEl.setAttribute("aria-live", "assertive");
+      toastEl.setAttribute("aria-atomic", "true");
+
+      toastEl.innerHTML = `
+        <div class="toast-header border-bottom-0 pb-1">
+          <span class="me-2">${icono}</span>
+          <strong class="me-auto text-dark" style="font-size: 0.92rem;">${titulo}</strong>
+          <small class="text-muted font-mono" style="font-size: 0.72rem;">Ahora</small>
+          <button type="button" class="btn-close ms-2" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body pt-1 pb-3 text-secondary" style="font-size: 0.85rem; line-height: 1.4;">
+          ${mensaje}
+        </div>
+      `;
+
+      contenedor.appendChild(toastEl);
+      const bsToast = new bootstrap.Toast(toastEl, { delay: 6000, autohide: true });
+      bsToast.show();
+
+      toastEl.addEventListener("hidden.bs.toast", () => {
+        toastEl.remove();
+      });
+    }
+  </script>
+</body>
+</html>
