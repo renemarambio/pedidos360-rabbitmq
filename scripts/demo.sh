@@ -211,6 +211,25 @@ case "$1" in
     docker exec pedidos360-kafka1 kafka-consumer-groups --bootstrap-server kafka-1:29092 --describe --group pedidos360-audit-group
     ;;
 
+  ep5-carga|carga)
+    titulo "[EP5-CARGA] Carga distribuida (12 pedidos) en las 3 particiones y 3 hilos de consumo"
+    echo "Creando 12 pedidos con IDs distintos (4001 a 4012)..."
+    for i in $(seq 4001 4012); do
+      curl -s -X POST "$PEDIDOS/api/pedidos" -H "$J" \
+        -d '{"idPedido":"PED-'"$i"'","productoId":"PROD-BURGER","nombreProducto":"Hamburguesa Carga #'"$i"'","precio":8990,"cantidad":1}' > /dev/null
+      echo -n "PED-$i "
+    done
+    echo "[OK]"
+    echo ""
+    echo "Esperando 2 segundos para sincronización de consumo en los 3 hilos..."
+    sleep 2
+    titulo "Métricas de consumo por tipo de evento, partición e hilo (GET /api/kafka/metricas)"
+    curl -s "$PEDIDOS/api/kafka/metricas"; echo
+    echo ""
+    titulo "Lag de consumer groups por partición vía kafka-admin.sh"
+    bash "$(dirname "$0")/kafka-admin.sh" lag
+    ;;
+
   *)
     echo "Uso: ./scripts/demo.sh <bloque>"
     echo ""
@@ -230,6 +249,7 @@ case "$1" in
     echo "  ep5-status | ep5-01    : Estado de Kafka, tópicos y microservicio"
     echo "  ep5-crear  | ep5-02    : Creación de pedido y streaming OrderCreated"
     echo "  ep5-ciclo  | ep5-03    : Ciclo de vida completo (OrderCreated -> Accepted -> Preparing -> Dispatched -> Delivered)"
+    echo "  ep5-carga  | carga     : Carga de 12 pedidos distribuidos en las 3 particiones y 3 hilos"
     echo "  ep5-dlt    | ep5-04    : Demostración de reintentos y Dead Letter Topic (orders.events.DLT)"
     echo "  ep5-ui     | ep5-05    : Acceso al panel web Kafka UI en puerto 8090"
     echo "  timeline               : Consulta de auditoría en memoria (GET /api/pedidos/{id}/timeline)"
