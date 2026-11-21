@@ -110,7 +110,11 @@ public class AuditTimelineConsumer {
 
         if (pedidoId != null) {
             ultimoEstadoPorPedido.put(pedidoId, registro);
-            historialEventosPorPedido.computeIfAbsent(pedidoId, k -> new CopyOnWriteArrayList<>()).add(registro);
+            List<Map<String, Object>> historial = historialEventosPorPedido.computeIfAbsent(pedidoId, k -> new CopyOnWriteArrayList<>());
+            boolean duplicado = historial.stream().anyMatch(e -> tipoEvento.equals(e.get("tipoEvento")));
+            if (!duplicado) {
+                historial.add(registro);
+            }
         }
     }
 

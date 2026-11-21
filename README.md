@@ -119,6 +119,16 @@ Configurado en `KafkaInfraestructuraConfig.java`:
 - **Recuperador**: `DeadLetterPublishingRecoverer` que desvía mensajes fallidos a `${record.topic()}.DLT` (`orders.events.DLT`).
 - **DLT Listener**: `KafkaAuditoriaConsumer.procesarDlt` captura y audita los mensajes desviados.
 
+### 5. Eventos Emitidos por los Dominios y Sincronización de Orden
+
+En la arquitectura híbrida de Pedidos360, los eventos del ciclo de vida se originan desde dos fuentes coordinadas:
+1. **API REST Operacional (`PedidoService`)**: Publica los eventos principales del ciclo de vida (`OrderCreated`, `OrderAccepted`, `OrderDelivered`). Para evitar condiciones de carrera, `PedidoService` realiza una **publicación síncrona en Kafka esperando confirmación del broker** (`kafkaTemplate.send(...).get(5, TimeUnit.SECONDS)`) y **SOLO DESPUÉS** distribuye el mensaje a RabbitMQ.
+2. **Eventos Emitidos por los Dominios (`CocinaService`, `DocumentoService`)**:
+   - **Dominio Cocina**: Al procesar la comanda aceptada vía RabbitMQ, genera el ticket interno `COC-{id}` y emite el evento de dominio `OrderPreparing` hacia Kafka con clave `pedidoId`.
+   - **Dominio Documentos**: Al emitir la boleta tributaria `BOL-{id}` vía RabbitMQ, emite el evento de dominio `OrderDispatched` hacia Kafka con clave `pedidoId`.
+   - **Idempotencia y Prevención de Duplicados**: Ambos servicios mantienen un registro concurrente en memoria (`ConcurrentHashMap.newKeySet()`) para garantizar que no se emitan eventos duplicados del mismo tipo para un mismo pedido. Asimismo, el consumidor de la línea de tiempo (`AuditTimelineConsumer`) deduplica transiciones consecutivas idénticas, garantizando una secuencia estricta en el timeline:
+     `OrderCreated` → `OrderAccepted` → `OrderPreparing` → `OrderDispatched` → `OrderDelivered`.
+
 ---
 
 ## Topología RabbitMQ (Capa Asíncrona Previa)

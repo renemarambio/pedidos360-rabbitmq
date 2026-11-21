@@ -75,4 +75,26 @@ class AuditTimelineConsumerTest {
         assertEquals(0, timeline.get("totalEventos"));
         assertTrue(((List<?>) timeline.get("eventos")).isEmpty());
     }
+
+    @Test
+    void consumirEventoTimeline_evitaDuplicadosMismoTipoEnHistorial() {
+        Map<String, Object> evento1 = new LinkedHashMap<>();
+        evento1.put("pedidoId", 8003L);
+        evento1.put("tipoEvento", "OrderPreparing");
+        evento1.put("origen", "DOMINIO_COCINA");
+        consumer.consumirEventoTimeline(evento1, "8003", "audit.timeline", 0, 20L, 1700000030000L);
+
+        Map<String, Object> evento2 = new LinkedHashMap<>();
+        evento2.put("pedidoId", 8003L);
+        evento2.put("tipoEvento", "OrderPreparing");
+        evento2.put("responsable", "Chef Juan");
+        consumer.consumirEventoTimeline(evento2, "8003", "audit.timeline", 0, 21L, 1700000031000L);
+
+        Map<String, Object> timeline = consumer.obtenerTimelinePedido(8003L);
+        assertEquals(1, timeline.get("totalEventos"));
+        assertEquals("OrderPreparing", timeline.get("ultimoEstado"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ultimo = (Map<String, Object>) timeline.get("ultimoRegistro");
+        assertEquals("Chef Juan", ultimo.get("responsable"));
+    }
 }

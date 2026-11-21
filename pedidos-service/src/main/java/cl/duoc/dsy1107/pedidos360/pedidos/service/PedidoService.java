@@ -7,6 +7,8 @@ import cl.duoc.dsy1107.pedidos360.mensajeria.publicacion.KafkaPedidoEventPublish
 import cl.duoc.dsy1107.pedidos360.mensajeria.publicacion.PedidoEventPublisher;
 import cl.duoc.dsy1107.pedidos360.pedidos.api.dto.CrearPedidoRequest;
 import cl.duoc.dsy1107.pedidos360.pedidos.api.dto.PedidoSolicitud;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Lógica de negocio de pedidos.
@@ -23,6 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class PedidoService {
 
+    private static final Logger log = LoggerFactory.getLogger(PedidoService.class);
     private static final BigDecimal TOTAL_POR_DEFECTO = BigDecimal.valueOf(15990);
 
     private final PedidoEventPublisher rabbitPublisher;
@@ -61,17 +65,22 @@ public class PedidoService {
                 request.falloDocumentos(),
                 metadatos);
 
-        // 1. Publicación en RabbitMQ (conservando compatibilidad y capas previas)
-        rabbitPublisher.publicarPedidoAceptado(evento);
-
-        // 2. Streaming de evento OrderCreated a Apache Kafka (clave: pedidoId)
+        // 1. Streaming de evento OrderCreated a Apache Kafka con espera síncrona de ACK
         PedidoEventoDTO kafkaEvento = PedidoEventoDTO.crear(
                 TipoEventoPedido.ORDER_CREATED.getCodigo(),
                 pedidoId,
                 metadatos,
                 evento.eventoId()
         );
-        kafkaPublisher.publicarEventoPedido(kafkaEvento);
+        try {
+            kafkaPublisher.publicarEventoPedido(kafkaEvento).get(5, TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            log.error("[PEDIDO-SERVICE] Error esperando ack de Kafka para OrderCreated de pedidoId {}: {}", pedidoId, ex.getMessage(), ex);
+            throw new RuntimeException("Error al publicar evento OrderCreated en Kafka", ex);
+        }
+
+        // 2. Publicación en RabbitMQ SOLO después de confirmar persistencia en Kafka
+        rabbitPublisher.publicarPedidoAceptado(evento);
 
         return evento;
     }
@@ -101,17 +110,22 @@ public class PedidoService {
                 solicitud.falloDocumentos(),
                 metadatos);
 
-        // 1. RabbitMQ
-        rabbitPublisher.publicarPedidoAceptado(evento);
-
-        // 2. Kafka (OrderAccepted con clave: pedidoId)
+        // 1. Streaming de evento OrderAccepted a Apache Kafka con espera síncrona de ACK
         PedidoEventoDTO kafkaEvento = PedidoEventoDTO.crear(
                 TipoEventoPedido.ORDER_ACCEPTED.getCodigo(),
                 pedidoId,
                 metadatos,
                 evento.eventoId()
         );
-        kafkaPublisher.publicarEventoPedido(kafkaEvento);
+        try {
+            kafkaPublisher.publicarEventoPedido(kafkaEvento).get(5, TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            log.error("[PEDIDO-SERVICE] Error esperando ack de Kafka para OrderAccepted de pedidoId {}: {}", pedidoId, ex.getMessage(), ex);
+            throw new RuntimeException("Error al publicar evento OrderAccepted en Kafka", ex);
+        }
+
+        // 2. Publicación en RabbitMQ SOLO después de confirmar persistencia en Kafka
+        rabbitPublisher.publicarPedidoAceptado(evento);
 
         return evento;
     }
@@ -132,7 +146,12 @@ public class PedidoService {
                 UUID.randomUUID().toString()
         );
 
-        kafkaPublisher.publicarEventoPedido(evento);
+        try {
+            kafkaPublisher.publicarEventoPedido(evento).get(5, TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            log.error("[PEDIDO-SERVICE] Error esperando ack de Kafka para {} de pedidoId {}: {}", tipoEvento, pedidoId, ex.getMessage(), ex);
+            throw new RuntimeException("Error al publicar evento " + tipoEvento + " en Kafka", ex);
+        }
         return evento;
     }
 
