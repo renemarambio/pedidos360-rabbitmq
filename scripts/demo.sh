@@ -106,8 +106,8 @@ case "$1" in
   ep5-01|ep5-status|kafka-status)
     titulo "[EP5-01] Estado del microservicio con integración Kafka + RabbitMQ"
     curl -s "$PEDIDOS/api/status"; echo
-    titulo "Listar tópicos creados en Apache Kafka (KRaft)"
-    docker exec pedidos360-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+    titulo "Listar tópicos creados en Apache Kafka (3 Brokers, RF=3)"
+    docker exec pedidos360-kafka1 kafka-topics --bootstrap-server kafka-1:29092 --list
     ;;
 
   ep5-02|ep5-crear|kafka-crear)
@@ -166,11 +166,49 @@ case "$1" in
     echo "  $KAFKA_UI"
     echo ""
     echo "Tópicos listados en la UI:"
-    echo "  - orders.events    (3 particiones)"
-    echo "  - audit.timeline   (3 particiones)"
-    echo "  - orders.events.DLT (Dead Letter Topic)"
-    echo "Consumer Group:"
-    echo "  - pedidos360-audit-group"
+    echo "  - orders.events    (3 particiones, RF=3)"
+    echo "  - audit.timeline   (3 particiones, RF=3)"
+    echo "  - orders.events.DLT (Dead Letter Topic, RF=3)"
+    echo "Consumer Groups activos en Kafka UI:"
+    echo "  - pedidos360-audit-group     (orders.events)"
+    echo "  - pedidos360-metricas-group  (orders.events, concurrency=3)"
+    echo "  - pedidos360-timeline-group  (audit.timeline)"
+    ;;
+
+  timeline|ep5-timeline)
+    titulo "[EP5-06] Línea de tiempo de auditoría por pedido (GET /api/pedidos/{id}/timeline)"
+    PEDIDO_ID="${2:-3050}"
+    echo "Consultando timeline para pedidoId=$PEDIDO_ID:"
+    curl -s "$PEDIDOS/api/pedidos/$PEDIDO_ID/timeline"; echo
+    ;;
+
+  metricas|ep5-metricas)
+    titulo "[EP5-07] Métricas en tiempo real segundo consumer group (GET /api/kafka/metricas)"
+    curl -s "$PEDIDOS/api/kafka/metricas"; echo
+    ;;
+
+  grupos|ep5-grupos)
+    titulo "[EP5-08] Consumer Groups activos (AdminClient API + Kafka CLI)"
+    echo "--- Desde API REST (GET /api/kafka/admin/groups) ---"
+    curl -s "$PEDIDOS/api/kafka/admin/groups"; echo
+    echo ""
+    echo "--- Desde CLI (kafka-consumer-groups) ---"
+    docker exec pedidos360-kafka1 kafka-consumer-groups --bootstrap-server kafka-1:29092 --list
+    ;;
+
+  lag|ep5-lag)
+    titulo "[EP5-09] Lag por partición de los Consumer Groups"
+    echo "--- Lag pedidos360-metricas-group (API REST) ---"
+    curl -s "$PEDIDOS/api/kafka/admin/groups/pedidos360-metricas-group/lag"; echo
+    echo ""
+    echo "--- Lag pedidos360-audit-group (API REST) ---"
+    curl -s "$PEDIDOS/api/kafka/admin/groups/pedidos360-audit-group/lag"; echo
+    echo ""
+    echo "--- Lag pedidos360-metricas-group (CLI) ---"
+    docker exec pedidos360-kafka1 kafka-consumer-groups --bootstrap-server kafka-1:29092 --describe --group pedidos360-metricas-group
+    echo ""
+    echo "--- Lag pedidos360-audit-group (CLI) ---"
+    docker exec pedidos360-kafka1 kafka-consumer-groups --bootstrap-server kafka-1:29092 --describe --group pedidos360-audit-group
     ;;
 
   *)
@@ -194,5 +232,9 @@ case "$1" in
     echo "  ep5-ciclo  | ep5-03    : Ciclo de vida completo (OrderCreated -> Accepted -> Preparing -> Dispatched -> Delivered)"
     echo "  ep5-dlt    | ep5-04    : Demostración de reintentos y Dead Letter Topic (orders.events.DLT)"
     echo "  ep5-ui     | ep5-05    : Acceso al panel web Kafka UI en puerto 8090"
+    echo "  timeline               : Consulta de auditoría en memoria (GET /api/pedidos/{id}/timeline)"
+    echo "  metricas               : Contadores del 2do grupo independiente (GET /api/kafka/metricas)"
+    echo "  grupos                 : Lista de consumer groups activos y miembros"
+    echo "  lag                    : Committed offset, end offset y lag por partición"
     ;;
 esac
