@@ -1,5 +1,6 @@
 package cl.duoc.dsy1107.pedidos360.config;
 
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.TopicPartition;
@@ -62,6 +63,14 @@ public class KafkaInfraestructuraConfig {
         KafkaAdmin admin = new KafkaAdmin(configs);
         admin.setFatalIfBrokerNotAvailable(false);
         return admin;
+    }
+
+    /**
+     * Cliente de administración para operaciones programáticas sobre el clúster Kafka.
+     */
+    @Bean(destroyMethod = "close")
+    public AdminClient adminClient(KafkaAdmin kafkaAdmin) {
+        return AdminClient.create(kafkaAdmin.getConfigurationProperties());
     }
 
     /**
