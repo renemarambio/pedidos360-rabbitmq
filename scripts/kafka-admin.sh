@@ -100,8 +100,8 @@ case "$1" in
     echo ""
     titulo "[Tolerancia a Fallos] 4. Reiniciando broker 3 ('pedidos360-kafka3')..."
     docker start pedidos360-kafka3
-    echo "Esperando 8 segundos a la sincronización y reincorporación al ISR..."
-    sleep 8
+    echo "Esperando 15 segundos a la sincronización y reincorporación al ISR..."
+    sleep 15
     echo ""
     titulo "[Tolerancia a Fallos] 5. Estado final -> ISR restaurado completamente (1,2,3)"
     docker exec "$KAFKA_CONTAINER" kafka-topics --bootstrap-server "$BOOTSTRAP" --describe --topic orders.events
