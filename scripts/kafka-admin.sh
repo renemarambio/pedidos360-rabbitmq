@@ -107,6 +107,49 @@ case "$1" in
     docker exec "$KAFKA_CONTAINER" kafka-topics --bootstrap-server "$BOOTSTRAP" --describe --topic orders.events
     ;;
 
+  lag-demo)
+    titulo "[DEMO DE LAG] 1. Deteniendo pedidos-service para acumular lag"
+    docker stop pedidos360-pedidos
+    echo ""
+    titulo "[DEMO DE LAG] 2. Publicando 20 mensajes directos en 'orders.events' con claves distintas"
+    echo "Publicando eventos (PedidoEventoDTO) con claves 5001 a 5020..."
+    for i in $(seq 5001 5020); do
+      NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+      echo "$i:{\"eventId\":\"evt-$i\",\"timestamp\":\"$NOW\",\"tipoEvento\":\"OrderCreated\",\"payloadPedido\":{\"pedidoId\":$i,\"productoId\":\"PROD-LAG\",\"precio\":9990,\"cantidad\":1},\"traceId\":\"trace-lag-$i\"}"
+    done | docker exec -i "$KAFKA_CONTAINER" kafka-console-producer \
+      --bootstrap-server "$BOOTSTRAP" \
+      --topic orders.events \
+      --property parse.key=true \
+      --property key.separator=:
+    echo "20 mensajes enviados exitosamente."
+    echo ""
+    titulo "[DEMO DE LAG] 3. Evidencia de LAG acumulado (> 0) con consumidores inactivos"
+    echo "--- pedidos360-audit-group ---"
+    docker exec "$KAFKA_CONTAINER" kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" \
+      --describe --group pedidos360-audit-group
+    echo ""
+    echo "--- pedidos360-metricas-group ---"
+    docker exec "$KAFKA_CONTAINER" kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" \
+      --describe --group pedidos360-metricas-group
+    echo ""
+    titulo "[DEMO DE LAG] 4. Iniciando pedidos-service y esperando 15s para drenar mensajes..."
+    docker start pedidos360-pedidos
+    echo "Esperando 15 segundos a que los consumidores procesen el backlog acumulado..."
+    sleep 15
+    echo ""
+    titulo "[DEMO DE LAG] 5. Evidencia de LAG recuperado (LAG = 0 en todas las particiones)"
+    echo "--- pedidos360-audit-group ---"
+    docker exec "$KAFKA_CONTAINER" kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" \
+      --describe --group pedidos360-audit-group
+    echo ""
+    echo "--- pedidos360-metricas-group ---"
+    docker exec "$KAFKA_CONTAINER" kafka-consumer-groups --bootstrap-server "$BOOTSTRAP" \
+      --describe --group pedidos360-metricas-group
+    echo ""
+    titulo "Verificación vía API REST (/api/kafka/admin/groups/pedidos360-metricas-group/lag)"
+    curl -s "$PEDIDOS/api/kafka/admin/groups/pedidos360-metricas-group/lag"; echo
+    ;;
+
   *)
     echo "Uso: ./scripts/kafka-admin.sh <bloque>"
     echo ""
@@ -118,5 +161,6 @@ case "$1" in
     echo "  crear-topico-prueba  : Crea tópico 'topico.prueba' con 3 particiones y RF=3"
     echo "  borrar-topico-prueba : Elimina 'topico.prueba' y verifica bloqueo de tópicos base"
     echo "  fallo-broker         : Demuestra degradación y recuperación de ISR ante caída de broker"
+    echo "  lag-demo             : Demuestra acumulación de lag con consumidor detenido y drenaje a 0"
     ;;
 esac
