@@ -40,6 +40,7 @@ public class KafkaAuditoriaConsumer {
     @KafkaListener(
             topics = "${pedidos360.kafka.topicos.orders-events:orders.events}",
             groupId = "${pedidos360.kafka.group-id:pedidos360-audit-group}",
+            concurrency = "3",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void procesarEventoPedido(
