@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -169,13 +170,19 @@ public class PedidoController {
         Map<String, Object> estado = new LinkedHashMap<>();
         estado.put("status", "UP");
         estado.put("servicio", "pedidos-service");
-        estado.put("broker", "RabbitMQ (2 Nodos) + Apache Kafka (KRaft)");
+        estado.put("broker", "RabbitMQ (2 nodos) + Apache Kafka (3 brokers + 3 ZooKeeper)");
         estado.put("mensajeriaAsincrona", "RabbitMQ (clúster de 2 nodos)");
-        estado.put("streamingEventos", "Apache Kafka (KRaft mode)");
-        estado.put("topicosKafka", Map.of(
-                "eventos", "orders.events (3 particiones)",
-                "auditoria", "audit.timeline (3 particiones)",
-                "dlt", "orders.events.DLT (Dead Letter Topic)"
+        estado.put("streamingEventos", "Apache Kafka 3 brokers, RF=3, min.insync.replicas=2");
+        Map<String, String> topicos = new LinkedHashMap<>();
+        topicos.put("eventos", "orders.events (3 particiones, RF=3)");
+        topicos.put("auditoria", "audit.timeline (3 particiones, RF=3)");
+        topicos.put("dlt", "orders.events.DLT (Dead Letter Topic, 3 particiones, RF=3)");
+        estado.put("topicosKafka", topicos);
+        estado.put("consumerGroups", List.of(
+                "pedidos360-audit-group",
+                "pedidos360-metricas-group",
+                "pedidos360-timeline-group",
+                "pedidos360-audit-group-dlt"
         ));
         estado.put("consumerGroup", "pedidos360-audit-group");
         estado.put("timestamp", LocalDateTime.now().toString());

@@ -82,4 +82,21 @@ class PedidoControllerTest {
                 .andExpect(jsonPath("$.totalEventos").value(2))
                 .andExpect(jsonPath("$.eventos[0].tipoEvento").value("OrderCreated"));
     }
+
+    @Test
+    void obtenerEstado_responde200ConDetalleCluster() throws Exception {
+        mockMvc.perform(get("/api/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.servicio").value("pedidos-service"))
+                .andExpect(jsonPath("$.broker").value("RabbitMQ (2 nodos) + Apache Kafka (3 brokers + 3 ZooKeeper)"))
+                .andExpect(jsonPath("$.streamingEventos").value("Apache Kafka 3 brokers, RF=3, min.insync.replicas=2"))
+                .andExpect(jsonPath("$.topicosKafka.eventos").value("orders.events (3 particiones, RF=3)"))
+                .andExpect(jsonPath("$.topicosKafka.auditoria").value("audit.timeline (3 particiones, RF=3)"))
+                .andExpect(jsonPath("$.topicosKafka.dlt").value("orders.events.DLT (Dead Letter Topic, 3 particiones, RF=3)"))
+                .andExpect(jsonPath("$.consumerGroups[0]").value("pedidos360-audit-group"))
+                .andExpect(jsonPath("$.consumerGroups[1]").value("pedidos360-metricas-group"))
+                .andExpect(jsonPath("$.consumerGroups[2]").value("pedidos360-timeline-group"))
+                .andExpect(jsonPath("$.consumerGroups[3]").value("pedidos360-audit-group-dlt"));
+    }
 }
