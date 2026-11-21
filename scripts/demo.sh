@@ -144,7 +144,7 @@ case "$1" in
 
     echo "5. Entregando pedido al cliente (OrderDelivered)..."
     curl -s -X POST "$PEDIDOS/api/pedidos/$PEDIDO_ID/entregar" -H "$J" \
-      -d '{"calificacion":5,"comentarios":"Llegó caliente y a tiempo"}'; echo
+      -d '{"calificacion":5,"comentarios":"Llego caliente y a tiempo"}'; echo
 
     titulo "Logs de auditoría para pedido $PEDIDO_ID (demostrando clave pedidoId y orden cronológico)"
     docker compose logs --tail=50 pedidos-service | grep -E "AUDITORÍA KAFKA|Tipo de Evento|Clave \(Key\)"

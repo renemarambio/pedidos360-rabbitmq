@@ -46,13 +46,33 @@ public class AuditTimelineConsumer {
             @Header(value = KafkaHeaders.OFFSET, required = false) Long offset,
             @Header(value = KafkaHeaders.RECEIVED_TIMESTAMP, required = false) Long timestampRecord
     ) {
+        Object datos = payload;
+        if (payload instanceof org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> record) {
+            datos = record.value();
+            if (key == null && record.key() != null) {
+                key = String.valueOf(record.key());
+            }
+            if (topico == null && record.topic() != null) {
+                topico = record.topic();
+            }
+            if (particion == null) {
+                particion = record.partition();
+            }
+            if (offset == null) {
+                offset = record.offset();
+            }
+            if (timestampRecord == null) {
+                timestampRecord = record.timestamp();
+            }
+        }
+
         String topicoEfectivo = topico != null ? topico : "audit.timeline";
         String particionStr = particion != null ? String.valueOf(particion) : "N/A";
         String offsetStr = offset != null ? String.valueOf(offset) : "N/A";
         String keyStr = key != null ? key : "N/A";
 
-        Long pedidoId = extraerPedidoId(payload, key);
-        String tipoEvento = extraerTipoEvento(payload);
+        Long pedidoId = extraerPedidoId(datos, key);
+        String tipoEvento = extraerTipoEvento(datos);
 
         log.info("""
                 ====================== TIMELINE CONSUMER ======================
@@ -69,7 +89,7 @@ public class AuditTimelineConsumer {
                 pedidoId != null ? pedidoId : "N/A",
                 tipoEvento,
                 timestampRecord != null ? Instant.ofEpochMilli(timestampRecord).toString() : "N/A",
-                payload
+                datos
         );
 
         Map<String, Object> registro = new LinkedHashMap<>();
@@ -82,10 +102,10 @@ public class AuditTimelineConsumer {
         registro.put("timestampBroker", timestampRecord != null ? Instant.ofEpochMilli(timestampRecord).toString() : null);
         registro.put("registradoEn", Instant.now().toString());
 
-        if (payload instanceof Map<?, ?> mapPayload) {
+        if (datos instanceof Map<?, ?> mapPayload) {
             mapPayload.forEach((k, v) -> registro.put(String.valueOf(k), v));
-        } else {
-            registro.put("datos", payload);
+        } else if (datos != null) {
+            registro.put("datos", datos.toString());
         }
 
         if (pedidoId != null) {
