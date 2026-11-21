@@ -39,7 +39,7 @@ flowchart TD
         CG_TIM["pedidos360-timeline-group\n(Historial en memoria)"]
     end
 
-    subgraph RabbitMQCluster["Clúster RabbitMQ (2 Nodos con Mnesia & Quorum)"]
+    subgraph RabbitMQCluster["Clúster RabbitMQ (2 Nodos con Mnesia)"]
         DX{{"pedidos360.direct.exchange"}}
         QN["pedidos360.notificaciones.queue"]
         QC["pedidos360.cocina.queue"]
@@ -306,34 +306,51 @@ Resultado de ejecución:
 
 ---
 
-## 10. Mapa de la Rúbrica de Evaluación (EP5 y EP6)
+## 10. Casos de Uso y Decisiones de Diseño
 
-A continuación se detalla la correspondencia punto a punto entre los indicadores de las rúbricas **EP5** y **EP6** y las piezas de código, endpoints o scripts que los respaldan:
+- **RabbitMQ para tareas/comandos vs. Apache Kafka para eventos**:
+  - *RabbitMQ (Colas de Tareas)*: Adecuado para la distribución de comandos discretos a dominios específicos (**Cocina**, **Notificaciones**, **Documentos**). Cada mensaje es procesado por un **único consumidor**, confirmándose con `ACK` y eliminándose de la cola al completarse exitosamente. En caso de error, implementa reintentos temporizados con TTL y aislamiento definitivo en Dead Letter Queues (DLQ).
+  - *Apache Kafka (Log de Eventos Distribuidos)*: Adecuado para capturar el flujo continuo e inmutable del ciclo de vida del pedido (`orders.events`). El log es **persistente, re-leíble (replayable)** y permite que **múltiples consumer groups lean concurrentemente los mismos eventos** a su propio ritmo sin interferir entre sí, garantizando orden estricto por clave (`pedidoId`).
+- **Por qué `key = pedidoId` y por qué 3 particiones**:
+  - *Clave `pedidoId`*: Kafka utiliza el hash consistente `murmur2(key) % partitions` para asignar mensajes a particiones. Al usar `pedidoId` como Record Key, todos los eventos pertenecientes a un mismo pedido (`OrderCreated`, `OrderAccepted`, `OrderPreparing`, `OrderDispatched`, `OrderDelivered`) viajan siempre a la **misma partición**, garantizando su procesamiento en orden cronológico estricto sin colisiones.
+  - *3 Particiones*: La partición es la unidad elemental de paralelismo en Kafka. Tres particiones permiten que un consumer group con `concurrency = 3` disponga de **un hilo de ejecución dedicado por partición**, procesando pedidos en paralelo con balanceo homogéneo y sin riesgo de desorden.
+- **Por qué $RF=3$ con `min.insync.replicas=2` y `acks=all`**:
+  - Proporciona tolerancia a fallos y consistencia estricta empresarial. Al distribuir 3 réplicas en 3 brokers independientes, el clúster puede tolerar la **caída abrupta de 1 broker** (ej: `docker stop pedidos360-kafka3`) sin pérdida de datos ni interrupción del servicio, ya que el quórum mínimo de 2 réplicas sincronizadas (`min.isr=2`) se preserva en los brokers activos restantes.
+- **Por qué retenciones diferenciadas por tópico**:
+  - `orders.events` (**7 días** / `604800000 ms`): Diseñado para el ciclo de vida operacional en caliente; otorga suficiente margen para que los consumidores absorban picos de carga o se recuperen de detenciones de mantenimiento.
+  - `audit.timeline` (**30 días** / `2592000000 ms`): Almacena la trazabilidad forense consolidada del pedido, permitiendo consultas históricas y soporte a clientes durante todo el ciclo mensual.
+  - `orders.events.DLT` (**14 días** / `1209600000 ms`): Brinda una ventana de 2 semanas para que ingenieros u operadores de plataforma analicen manualmente mensajes anómalos, inspeccionen encabezados de fallo y realicen correcciones operativas.
+- **Por qué Kafka antes que RabbitMQ en `PedidoService`**:
+  - Para evitar condiciones de carrera en el orden cronológico de eventos. Si se enviara primero a RabbitMQ, los consumidores de los dominios (como cocina o documentos) podrían ejecutarse inmediatamente en paralelo y publicar en Kafka eventos de estado avanzados (`OrderPreparing` u `OrderDispatched`) antes de que el hilo web termine de persistir `OrderCreated`. Publicando primero en Kafka sincrónicamente con ACK (`.get(5, TimeUnit.SECONDS)`), se asegura que el evento inicial tenga offset asignado antes de detonar las tareas asíncronas secundarias.
+
+---
+
+## 11. Mapa de la Rúbrica Oficial (EP5 y EP6)
 
 ### Rúbrica EP5 — Streaming de Eventos con Apache Kafka
 
-| Indicador | Criterio de Evaluación | Evidencia en el Proyecto / Archivo | Endpoint o Script de Validación |
-|---|---|---|---|
-| **E5-01** | Despliegue de infraestructura Kafka multi-broker | `docker-compose.yml` (3 brokers Kafka Confluent 7.6.1 + 3 ZooKeeper con RF=3). | `docker compose ps` / `scripts/kafka-admin.sh topics` |
-| **E5-02** | Declaración y configuración de tópicos | `KafkaInfraestructuraConfig.java` (`orders.events`, `audit.timeline`, `orders.events.DLT`, 3 particiones, RF=3, retention configurada). | `GET /api/kafka/admin/topics` / `scripts/demo.sh ep5-status` |
-| **E5-03** | Estructura de envelope de eventos | `PedidoEventoDTO.java` y `TipoEventoPedido.java` (Record inmutable con eventId, timestamp, tipoEvento, payload, traceId). | `PedidoEventoDTO.java` / logs en `scripts/demo.sh ep5-crear` |
-| **E5-04** | Particionado por clave y orden cronológico | `KafkaPedidoEventPublisher.java` (publica con clave `pedidoId`) y `PedidoService.java` (publicación síncrona). | `scripts/demo.sh ep5-ciclo` / `GET /api/pedidos/3050/timeline` |
-| **E5-05** | Consumidor de auditoría de eventos | `KafkaAuditoriaConsumer.java` (`@KafkaListener` sobre `orders.events`, groupId `pedidos360-audit-group`, concurrencia 3). | Logs de `pedidos360-pedidos` / `scripts/demo.sh ep5-crear` |
-| **E5-06** | Consolidación y línea de tiempo de auditoría | `AuditTimelineConsumer.java` (`@KafkaListener` sobre `audit.timeline`, groupId `pedidos360-timeline-group`). | `GET /api/pedidos/{id}/timeline` / `scripts/demo.sh timeline` |
-| **E5-07** | Estrategia de reintentos y Dead Letter Topic | `KafkaInfraestructuraConfig.java` (`DefaultErrorHandler`, `FixedBackOff(1000, 2)`, `DeadLetterPublishingRecoverer`). | `POST /api/lab/kafka/simular-dlt` / `scripts/demo.sh ep5-dlt` |
-| **E5-08** | Verificación de desvío hacia DLT | `KafkaAuditoriaConsumer.procesarDlt` (consumidor sobre `orders.events.DLT` que alerta y registra excepciones). | `scripts/demo.sh ep5-dlt` |
-| **E5-09** | Observabilidad y monitoreo visual | Integración con contenedor `pedidos360-kafka-ui` (puerto 8090) con clúster y tópicos configurados. | `http://localhost:8090` / `scripts/demo.sh ep5-ui` |
+| Indicador | Nombre oficial | Evidencia |
+|---|---|---|
+| **E5-01** | Cliente Kafka y brokers | `spring.kafka` en [application.yml](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/resources/application.yml) (3 bootstrap servers), [docker-compose.yml](file:///c:/Users/ithan/Downloads/p360-final/docker-compose.yml) (3 brokers + 3 ZooKeeper) |
+| **E5-02** | Productores y consumidores (2 tópicos) | [KafkaPedidoEventPublisher.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/mensajeria/publicacion/KafkaPedidoEventPublisher.java) (`orders.events` y `audit.timeline`), [KafkaAuditoriaConsumer.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/dominio/auditoria/KafkaAuditoriaConsumer.java), [MetricasPedidosConsumer.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/dominio/metricas/MetricasPedidosConsumer.java), [AuditTimelineConsumer.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/dominio/auditoria/AuditTimelineConsumer.java) |
+| **E5-03** | Administración básica por código | [KafkaInfraestructuraConfig.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/config/KafkaInfraestructuraConfig.java) (`NewTopic`/`TopicBuilder`), [KafkaAdminController.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/pedidos/api/KafkaAdminController.java) (`AdminClient`) |
+| **E5-04** | Publicación y serialización | [KafkaPedidoEventPublisher.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/mensajeria/publicacion/KafkaPedidoEventPublisher.java), key `pedidoId`, `StringSerializer` + `JsonSerializer`, `acks=all`, idempotencia, [PedidoEventoDTO.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/mensajeria/evento/PedidoEventoDTO.java) |
+| **E5-05** | Consumo y lógica de negocio | [KafkaAuditoriaConsumer.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/dominio/auditoria/KafkaAuditoriaConsumer.java) (auditoría $\rightarrow$ `audit.timeline`), [AuditTimelineConsumer.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/dominio/auditoria/AuditTimelineConsumer.java) (`/api/pedidos/{id}/timeline`), [MetricasPedidosConsumer.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/dominio/metricas/MetricasPedidosConsumer.java) (`/api/kafka/metricas`) |
+| **E5-06** | Manejo de errores y reintentos | `DefaultErrorHandler`, `FixedBackOff(1000,2)`, `DeadLetterPublishingRecoverer`, `orders.events.DLT`, `bash scripts/demo.sh ep5-dlt` |
+| **E5-07** | Retención, particiones y replicación | 3 particiones, RF=3, `min.insync.replicas=2`, `retention.ms` por tópico, `bash scripts/kafka-admin.sh retention` y `fallo-broker` |
+| **E5-08** | Consumer groups | 4 grupos (`pedidos360-audit-group`, `pedidos360-metricas-group`, `pedidos360-timeline-group`, `pedidos360-audit-group-dlt`), `concurrency=3`, `bash scripts/kafka-admin.sh groups` |
+| **E5-09** | Gestión replicable con scripts / APIs | [scripts/kafka-admin.sh](file:///c:/Users/ithan/Downloads/p360-final/scripts/kafka-admin.sh), [scripts/demo.sh](file:///c:/Users/ithan/Downloads/p360-final/scripts/demo.sh), `/api/kafka/admin/*` |
 
 ### Rúbrica EP6 — Administración, Escalabilidad y Resiliencia en Kafka
 
-| Indicador | Criterio de Evaluación | Evidencia en el Proyecto / Archivo | Endpoint o Script de Validación |
-|---|---|---|---|
-| **E6-01** | Consumo particionado multihilo | `concurrency = "3"` en `KafkaAuditoriaConsumer` y `MetricasPedidosConsumer` (un hilo por partición). | `GET /api/kafka/metricas` / `scripts/demo.sh ep5-carga` |
-| **E6-02** | Múltiples Consumer Groups independientes | `pedidos360-audit-group` y `pedidos360-metricas-group` leyendo concurrentemente de `orders.events`. | `scripts/kafka-admin.sh groups` / `GET /api/kafka/admin/groups` |
-| **E6-03** | Monitoreo y métricas de consumo en tiempo real | `MetricasPedidosConsumer.java` (contadores atómicos concurrentes por tipo, partición e hilo). | `GET /api/kafka/metricas` / `scripts/demo.sh metricas` |
-| **E6-04** | Consulta administrativa de tópicos por API | `KafkaAdminController.java` método `listarTopicos` con `AdminClient.describeTopics`. | `GET /api/kafka/admin/topics` / `scripts/kafka-admin.sh topics` |
-| **E6-05** | Creación y borrado dinámico con seguridad | `KafkaAdminController.java` (`crearTopico`, `eliminarTopico` con bloqueo HTTP 400 de tópicos protegidos). | `POST / DELETE /api/kafka/admin/topics` / `scripts/kafka-admin.sh crear-topico-prueba` |
-| **E6-06** | Alteración en caliente de configuración de tópicos | `KafkaAdminController.java` método `modificarRetencion` con `incrementalAlterConfigs`. | `PUT /api/kafka/admin/topics/{n}/retention` / `scripts/kafka-admin.sh retention` |
-| **E6-07** | Monitoreo programático de Consumer Lag | `KafkaAdminController.java` método `obtenerLagConsumerGroup` con `listConsumerGroupOffsets` y `listOffsets`. | `GET /api/kafka/admin/groups/{id}/lag` / `scripts/kafka-admin.sh lag` |
-| **E6-08** | Tolerancia a fallos y recuperación de ISR | Clúster de 3 brokers con $RF=3$ y $min.insync.replicas=2$. Degradación de ISR ante broker caído y reintegro. | `scripts/kafka-admin.sh fallo-broker` |
-| **E6-09** | Demostración de acumulación y drenaje de Lag | Simulación con consumidor detenido, inyección de 20 eventos con claves distintas y drenaje a cero. | `scripts/kafka-admin.sh lag-demo` |
+| Indicador | Nombre oficial | Evidencia |
+|---|---|---|
+| **E6-01** | Arquitectura 3 ZooKeeper + 3 brokers | [docker-compose.yml](file:///c:/Users/ithan/Downloads/p360-final/docker-compose.yml), `docker compose ps` |
+| **E6-02** | 2 tópicos, 3 particiones y 3 réplicas | `bash scripts/kafka-admin.sh topics`, `GET /api/kafka/admin/topics`, panel Kafka UI |
+| **E6-03** | Uso de Kafka UI | `http://localhost:8090` (brokers, tópicos, mensajes, consumers) |
+| **E6-04** | Flujo productor y consumidor | `bash scripts/demo.sh ep5-ciclo`, logs de auditoría, `GET /api/pedidos/{id}/timeline` |
+| **E6-05** | Diseño del evento / DTO | [PedidoEventoDTO.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/mensajeria/evento/PedidoEventoDTO.java) (`eventId`, `timestamp`, `tipoEvento`, `payloadPedido`, `traceId`), [TipoEventoPedido.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/mensajeria/evento/TipoEventoPedido.java) |
+| **E6-06** | Procesamiento reactivo | Consumidores que reaccionan a cada evento: auditoría publica en `audit.timeline`, timeline actualiza estado, métricas actualiza contadores |
+| **E6-07** | Gestión de Kafka | [KafkaAdminController.java](file:///c:/Users/ithan/Downloads/p360-final/pedidos-service/src/main/java/cl/duoc/dsy1107/pedidos360/pedidos/api/KafkaAdminController.java) (crear/borrar tópicos, cambiar retención), `bash scripts/kafka-admin.sh crear-topico-prueba` / `retention` |
+| **E6-08** | Métricas offsets, lag y distribución | `bash scripts/kafka-admin.sh lag` y `lag-demo`, `GET /api/kafka/admin/groups/{id}/lag`, `bash scripts/demo.sh ep5-carga`, `GET /api/kafka/metricas` |
+| **E6-09** | Casos de uso y decisiones de operación | Sección 10 "Casos de uso y decisiones de diseño" del [README.md](file:///c:/Users/ithan/Downloads/p360-final/README.md) |
