@@ -1,5 +1,6 @@
 package cl.duoc.dsy1107.pedidos360.pedidos.api;
 
+import cl.duoc.dsy1107.pedidos360.dominio.auditoria.AuditTimelineConsumer;
 import cl.duoc.dsy1107.pedidos360.mensajeria.evento.PedidoEvento;
 import cl.duoc.dsy1107.pedidos360.mensajeria.evento.PedidoEventoDTO;
 import cl.duoc.dsy1107.pedidos360.pedidos.api.dto.CrearPedidoRequest;
@@ -32,9 +33,20 @@ import java.util.Map;
 public class PedidoController {
 
     private final PedidoService pedidoService;
+    private final AuditTimelineConsumer auditTimelineConsumer;
 
-    public PedidoController(PedidoService pedidoService) {
+    public PedidoController(PedidoService pedidoService, AuditTimelineConsumer auditTimelineConsumer) {
         this.pedidoService = pedidoService;
+        this.auditTimelineConsumer = auditTimelineConsumer;
+    }
+
+    /**
+     * Devuelve la línea de tiempo de auditoría registrada para un pedido.
+     */
+    @GetMapping("/pedidos/{id}/timeline")
+    public ResponseEntity<Map<String, Object>> obtenerTimeline(@PathVariable("id") Long id) {
+        Map<String, Object> timeline = auditTimelineConsumer.obtenerTimelinePedido(id);
+        return ResponseEntity.ok(timeline);
     }
 
     /** Pedido desde el catálogo web. Emite OrderCreated a Kafka y distribuye a RabbitMQ. */

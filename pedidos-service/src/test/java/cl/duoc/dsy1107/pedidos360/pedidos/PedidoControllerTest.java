@@ -17,6 +17,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import cl.duoc.dsy1107.pedidos360.dominio.auditoria.AuditTimelineConsumer;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,6 +32,9 @@ class PedidoControllerTest {
 
     @MockBean
     private PedidoService pedidoService;
+
+    @MockBean
+    private AuditTimelineConsumer auditTimelineConsumer;
 
     @Test
     void crearPedidoValido_responde201() throws Exception {
@@ -56,5 +61,25 @@ class PedidoControllerTest {
                 .andExpect(jsonPath("$.errores.cantidad").exists());
 
         verify(pedidoService, never()).crearPedido(any());
+    }
+
+    @Test
+    void obtenerTimeline_responde200ConHistorial() throws Exception {
+        when(auditTimelineConsumer.obtenerTimelinePedido(5521L)).thenReturn(Map.of(
+                "pedidoId", 5521L,
+                "ultimoEstado", "OrderDelivered",
+                "totalEventos", 2,
+                "eventos", java.util.List.of(
+                        Map.of("tipoEvento", "OrderCreated", "particion", 1),
+                        Map.of("tipoEvento", "OrderDelivered", "particion", 1)
+                )
+        ));
+
+        mockMvc.perform(get("/api/pedidos/5521/timeline"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pedidoId").value(5521))
+                .andExpect(jsonPath("$.ultimoEstado").value("OrderDelivered"))
+                .andExpect(jsonPath("$.totalEventos").value(2))
+                .andExpect(jsonPath("$.eventos[0].tipoEvento").value("OrderCreated"));
     }
 }
